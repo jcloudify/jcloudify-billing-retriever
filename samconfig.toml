@@ -5,5 +5,6 @@ resolve_s3 = true
 s3_prefix = "billing-retriever-app"
 region = "eu-west-3"
 profile = "jc"
-capabilities = "CAPABILITY_IAM"
+capabilities = "CAPABILITY_NAMED_IAM"
 image_repositories = []
+parameter_overrides = "Env=\"prepro\""

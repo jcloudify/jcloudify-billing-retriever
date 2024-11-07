@@ -28,6 +28,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AWSBillingReadOnlyAccess
         - arn:aws:iam::aws:policy/AWSResourceGroupsReadOnlyAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
   BillingRetrieverFunction:
     Type: AWS::Serverless::Function

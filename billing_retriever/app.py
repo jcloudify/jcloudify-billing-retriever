@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import boto3
 
@@ -24,7 +24,19 @@ def get_tag_values(tag_key):
     return tag_values
 
 
-def get_billing_by_app_and_env(app_names, env_names, start, end):
+def get_formatted_billing_info(
+    app_name, env, start_period, end_period, total, currency
+):
+    return {
+        "app_name": app_name,
+        "env": env,
+        "start_period": start_period,
+        "end_period": end_period,
+        "total cost": total + " " + currency,
+    }
+
+
+def get_billing_by_app_and_env(app_name, env_name, start, end):
     cost_explorer_client = boto3.client("ce", region_name="eu-west-3")
     time_period = {
         "Start": start.strftime("%Y-%m-%d"),
@@ -35,7 +47,7 @@ def get_billing_by_app_and_env(app_names, env_names, start, end):
             {
                 "Tags": {
                     "Key": "app",
-                    "Values": app_names,
+                    "Values": [app_name],
                     "MatchOptions": [
                         "EQUALS",
                     ],
@@ -44,7 +56,7 @@ def get_billing_by_app_and_env(app_names, env_names, start, end):
             {
                 "Tags": {
                     "Key": "env",
-                    "Values": env_names,
+                    "Values": [env_name],
                     "MatchOptions": [
                         "EQUALS",
                     ],
@@ -52,29 +64,33 @@ def get_billing_by_app_and_env(app_names, env_names, start, end):
             },
         ]
     }
+
     response = cost_explorer_client.get_cost_and_usage(
         TimePeriod=time_period,
         Granularity="MONTHLY",
         Metrics=["UnblendedCost"],
         Filter=tag_filters,
     )
+
     return response
 
 
 def lambda_handler(event, context):
     today = datetime.now()
+    tomorrow = today + timedelta(days=1)
     first_day_of_current_month = today.replace(day=1)
     first_day_of_previous_month = first_day_last_month(first_day_of_current_month)
 
-    app_tag_values = get_tag_values("app")
-    env_tag_values = get_tag_values("env")
+    app_tag_values = list(get_tag_values("app"))
+    env_tag_values = list(get_tag_values("env"))
+    print(type(env_tag_values))
+    print(type(app_tag_values))
+
     return {
         "statusCode": 200,
         "body": json.dumps(
             {
-                "type": str(type(app_tag_values)),
-                "app_tag_Values": str(app_tag_values),
-                "env_tag_Values": str(env_tag_values),
+                "message": "Hello World",
             }
         ),
     }

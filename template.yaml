@@ -33,6 +33,7 @@ Resources:
         - arn:aws:iam::aws:policy/AWSResourceGroupsReadOnlyAccess
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
         - arn:aws:iam::aws:policy/AmazonSESFullAccess
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole
 
   BillingRetrieverFunction:
     Type: AWS::Serverless::Function

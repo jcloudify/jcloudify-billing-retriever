@@ -1,6 +1,11 @@
 import json
 import boto3
+import os
 from datetime import datetime
+
+
+API_EVENT_SOURCE = "app.jcloudify.billing.retriever.event"
+API_EVENT_DETAIL_TYPE = "app.jcloudify.billing.retriever"
 
 
 def first_day_last_month(date):
@@ -73,10 +78,13 @@ def get_billing_by_app_and_env(app_name, env_name, start, end):
     return response
 
 
-def lambda_handler(event, context):
+def handle_sqs_message(event):
     today = datetime.now()
     first_day_of_current_month = today.replace(day=1)
     first_day_of_previous_month = first_day_last_month(first_day_of_current_month)
+    print(
+        f"Retrieving app billing info from {first_day_of_previous_month} to {first_day_of_current_month}"
+    )
 
     app_tag_values = list(get_tag_values("app"))
     env_tag_values = list(get_tag_values("env"))
@@ -107,9 +115,52 @@ def lambda_handler(event, context):
 
     return {
         "statusCode": 200,
-        "body": json.dumps(
-            {
-                "results": str(app_billings),
-            }
-        ),
+        "body": json.dumps({"message": "SQS messages processed successfully!"}),
     }
+
+
+def handle_api_request(event):
+    event_bus_name = os.getenv("AWS_EVENTBRIDGE_BUS")
+    eventbridge_client = boto3.client("events")
+    response = eventbridge_client.put_events(
+        Entries=[
+            {
+                "Source": API_EVENT_SOURCE,
+                "DetailType": API_EVENT_DETAIL_TYPE,
+                "Detail": json.dumps(API_EVENT_DETAIL_TYPE),
+                "EventBusName": event_bus_name,
+            },
+        ]
+    )
+    failed_entry_count = response["FailedEntryCount"]
+    if failed_entry_count > 0:
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {
+                    "message": "An error occurred when trying to trigger billing retrieval."
+                }
+            ),
+        }
+    else:
+        return {
+            "statusCode": 200,
+            "body": json.dumps(
+                {"message": "Billing retrieval successfully triggered!"}
+            ),
+        }
+
+
+def lambda_handler(event, context):
+    if "httpMethod" in event:
+        return handle_api_request(event)
+
+    if "Records" in event and event["Records"][0]["eventSource"] == "aws:sqs":
+        for records in event["Records"]:
+            print(f"Received records: {json.dumps(records)}")
+            body = json.loads(records["body"])
+            detail_type = body["detail-type"]
+            if detail_type == API_EVENT_DETAIL_TYPE:
+                return handle_sqs_message(event)
+
+    return {"statusCode": 400, "body": json.dumps({"message": "Unknown event source"})}

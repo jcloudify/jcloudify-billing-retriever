@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Jcloudify Billing Retriever - Schedulers
+
+Parameters:
+  Env:
+    Type: String
+
+Resources:
+  ScheduledEventExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ '', [ jcloudify-billing-retriever-, !Ref Env, -ScheduledEventExecutionRole ] ]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonEventBridgeFullAccess'
+
+  TriggerBillingRetrieving:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Description: Scheduler that triggers the update of the states of JCloudify apps billing
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Name: !Join [ '', [ !Ref Env, -TriggerBillingRetrieving ] ]
+      ScheduleExpression: "cron(0 0 1 * ? *)" # This will run every 1st day of the month
+      Target:
+        Arn: !Sub '{{resolve:ssm:/jcloudify-api/${Env}/eventbridge/bus-arn}}'
+        RoleArn: !GetAtt ScheduledEventExecutionRole.Arn
+        DeadLetterConfig:
+          Arn: !Sub '{{resolve:ssm:/jcloudify-billing-retriever/${Env}/sqs/dead-letter-queue-arn}}'
+        EventBridgeParameters:
+          DetailType: 'app.jcloudify.billing.retriever'
+          Source: 'app.jcloudify.billing.retriever.event'

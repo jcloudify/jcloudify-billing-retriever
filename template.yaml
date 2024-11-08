@@ -48,7 +48,7 @@ Resources:
         EventBillingRetrieverTrigger:
           Type: SQS
           Properties:
-            Queue: !Sub '{{resolve:ssm://jcloudify-billing-retriever/${Env}/sqs/mailbox-queue-arn}}'
+            Queue: !Sub '{{resolve:ssm:/jcloudify-billing-retriever/${Env}/sqs/mailbox-queue-arn}}'
             BatchSize: 1
         ManualBillingRetrieverTrigger:
           Type: Api

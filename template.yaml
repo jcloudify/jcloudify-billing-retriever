@@ -12,6 +12,9 @@ Parameters:
 Globals:
   Function:
     Timeout: 300
+    Environment:
+      Variables:
+        AWS_EVENTBRIDGE_BUS: !Sub '{{resolve:ssm:/jcloudify-api/${Env}/eventbridge/bus-name}}'
 
 Resources:
   BillingRetrieverIAMRole:

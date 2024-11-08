@@ -1,7 +1,6 @@
 import json
-from datetime import datetime, timedelta
-
 import boto3
+from datetime import datetime
 
 
 def first_day_last_month(date):
@@ -71,26 +70,46 @@ def get_billing_by_app_and_env(app_name, env_name, start, end):
         Metrics=["UnblendedCost"],
         Filter=tag_filters,
     )
-
     return response
 
 
 def lambda_handler(event, context):
     today = datetime.now()
-    tomorrow = today + timedelta(days=1)
     first_day_of_current_month = today.replace(day=1)
     first_day_of_previous_month = first_day_last_month(first_day_of_current_month)
 
     app_tag_values = list(get_tag_values("app"))
     env_tag_values = list(get_tag_values("env"))
-    print(type(env_tag_values))
-    print(type(app_tag_values))
+
+    app_billings = []
+
+    for app_name in app_tag_values:
+        for env_name in env_tag_values:
+            response = get_billing_by_app_and_env(
+                app_name,
+                env_name,
+                first_day_of_previous_month,
+                first_day_of_current_month,
+            )
+            for result in response["ResultsByTime"]:
+                amount = result["Total"]["UnblendedCost"]["Amount"]
+                currency = result["Total"]["UnblendedCost"]["Unit"]
+                app_billings.append(
+                    get_formatted_billing_info(
+                        app_name,
+                        env_name,
+                        first_day_of_previous_month,
+                        first_day_of_current_month,
+                        amount,
+                        currency,
+                    )
+                )
 
     return {
         "statusCode": 200,
         "body": json.dumps(
             {
-                "message": "Hello World",
+                "results": str(app_billings),
             }
         ),
     }
